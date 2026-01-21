@@ -1,0 +1,34 @@
+# nginx proxy address - http://172.17.0.1:3006
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "5m"
+    max-file: "1"
+
+services:
+  hoarder:
+    image: ghcr.io/hoarder-app/hoarder:latest
+    container_name: hoarder-app
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - hoarder
+    ports:
+      - "3006:3000"
+    environment:
+      TZ: ${TZ:-America/New_York}
+      PUID: ${SERVICE_USER:-1000}
+      PGID: ${SERVICE_GROUP:-1000}
+    volumes:
+      - ./rootfs/config/hoarder:/config
+      - ./rootfs/data/hoarder:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  hoarder:
+    external: false
