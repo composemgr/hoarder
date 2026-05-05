@@ -47,8 +47,8 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/config/hoarder` - Data storage
-- `./rootfs/data/hoarder` - Data storage
+- `./volumes/config/hoarder` - Data storage
+- `./volumes/data/hoarder` - Data storage
 
 ## 🔍 Logging
 
