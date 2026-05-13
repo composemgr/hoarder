@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:3006
 
+name: hoarder
 x-logging: &default-logging
   driver: json-file
   options:
@@ -7,28 +8,44 @@ x-logging: &default-logging
     max-file: "1"
 
 services:
-  hoarder:
+  app:
     image: ghcr.io/hoarder-app/hoarder:latest
+    pull_policy: always
     container_name: hoarder-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - hoarder
     ports:
-      - "3006:3000"
+      - "172.17.0.1:3006:3000"
     environment:
       TZ: ${TZ:-America/New_York}
-      PUID: ${SERVICE_USER:-1000}
-      PGID: ${SERVICE_GROUP:-1000}
+      NEXTAUTH_SECRET: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      NEXTAUTH_URL: http://${BASE_HOST_NAME:-$HOSTNAME}:3006
+      MEILI_ADDR: http://hoarder-meilisearch:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-changeme_meili_master_key_min_16_chars}
+      DATA_DIR: /data
     volumes:
-      - ./volumes/config/hoarder:/config
       - ./volumes/data/hoarder:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    depends_on:
+      - hoarder-meilisearch
+
+  hoarder-meilisearch:
+    image: getmeili/meilisearch:latest
+    pull_policy: always
+    container_name: hoarder-meilisearch
+    restart: always
+    logging: *default-logging
+    networks:
+      - hoarder
+    environment:
+      TZ: ${TZ:-America/New_York}
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-changeme_meili_master_key_min_16_chars}
+    volumes:
+      - ./volumes/data/meilisearch/hoarder:/meili_data
 
 networks:
   hoarder:
+    name: hoarder
     external: false
