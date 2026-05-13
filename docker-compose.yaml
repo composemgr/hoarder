@@ -9,7 +9,7 @@ x-logging: &default-logging
 
 services:
   app:
-    image: ghcr.io/hoarder-app/hoarder:latest
+    image: ghcr.io/karakeep-app/karakeep:latest
     pull_policy: always
     container_name: hoarder-app
     restart: always
@@ -26,6 +26,7 @@ services:
       NEXTAUTH_URL: http://${BASE_HOST_NAME:-$HOSTNAME}:3006
       MEILI_ADDR: http://hoarder-meilisearch:7700
       MEILI_MASTER_KEY: ${APP_SECRET_KEY:-changeme_meili_master_key_min_16_chars}
+      BROWSER_WEB_URL: http://hoarder-chrome:9222
       DATA_DIR: /data
       CONTAINER_NAME: hoarder-app
       HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
@@ -33,6 +34,7 @@ services:
       - ./volumes/data/hoarder:/data
     depends_on:
       - hoarder-meilisearch
+      - hoarder-chrome
     labels:
       - 'traefik.enable=true'
       - 'cloudflare.enable=true'
@@ -49,6 +51,24 @@ services:
       - 'traefik.http.routers.hoarder-app-secure.tls.certresolver=cloudflare'
       - 'traefik.http.routers.hoarder-app-secure.service=hoarder-app'
       - 'traefik.http.services.hoarder-app.loadbalancer.server.port=3000'
+
+  hoarder-chrome:
+    image: gcr.io/zenika-hub/alpine-chrome:latest
+    pull_policy: always
+    container_name: hoarder-chrome
+    restart: always
+    logging: *default-logging
+    networks:
+      - hoarder
+    command:
+      - --no-sandbox
+      - --disable-gpu
+      - --disable-dev-shm-usage
+      - --remote-debugging-address=0.0.0.0
+      - --remote-debugging-port=9222
+      - --hide-scrollbars
+    environment:
+      CONTAINER_NAME: hoarder-chrome
 
   hoarder-meilisearch:
     image: getmeili/meilisearch:latest
