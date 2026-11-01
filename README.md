@@ -1,14 +1,23 @@
 ## 👋 Welcome to hoarder 🚀
 
-Self-hosted bookmark manager and read-it-later app
+Self-hosted bookmark manager with full-text search and AI tagging
 
 ## 📋 Description
 
-Self-hosted bookmark manager and read-it-later app
+Hoarder (upstream name: Karakeep) is a self-hosted bookmark manager. It stores
+links, notes, and images, archives the page content, and makes everything
+searchable with full-text search. Optional AI features auto-tag and summarize
+saved items.
 
 ## 🚀 Services
 
-- **hoarder**: ghcr.io/hoarder-app/hoarder:latest
+- **app**: ghcr.io/karakeep-app/karakeep:latest
+
+### Infrastructure Components
+
+- **hoarder-chrome**: zenika/alpine-chrome:latest
+- **hoarder-meilisearch**: getmeili/meilisearch:latest - Full-text search index
+
 
 ## 📦 Installation
 
@@ -21,7 +30,8 @@ curl -q -LSsf "https://raw.githubusercontent.com/composemgr/hoarder/main/docker-
 ```bash
 git clone "https://github.com/composemgr/hoarder" ~/.local/srv/docker/hoarder
 cd ~/.local/srv/docker/hoarder
-docker compose up -d
+cp default.env .env
+docker compose --env-file .env up -d
 ```
 
 ### Option 3: Using composemgr
@@ -35,44 +45,89 @@ composemgr install hoarder
 
 ```shell
 TZ=America/New_York
-SERVICE_USER=1000
-SERVICE_GROUP=1000
+APP_SECRET_KEY=replace-with-a-random-32-byte-hex-string
 ```
 
 See `docker-compose.yaml` for complete list of configurable options.
 
+### Environment Files
+
+`default.env.sample` holds the full set of variables and is copied to `.env`
+before starting the stack:
+
+```bash
+cp default.env .env
+docker compose --env-file .env up -d
+```
+
+`app.env.sample` holds the app-specific overrides and is copied to `app.env`:
+
+```bash
+cp app.env.sample app.env
+```
+
+`composemgr up` applies `app.env` and `default.env` automatically. Raw
+`docker compose` commands need `--env-file .env` to pick up the same values.
+
+### Reverse Proxy
+
+Three standalone compose files ship in this repo:
+
+| File | Use |
+|------|-----|
+| `docker-compose.yaml` | Default, published on `172.17.0.1:64198` |
+| `docker-compose.traefik.yaml` | Behind an existing external `traefik` network |
+| `docker-compose.tunnel.yaml` | Behind an existing external `cloudflare` tunnel network |
+
+```bash
+docker compose -f docker-compose.traefik.yaml --env-file .env up -d
+```
+
 ## 🌐 Access
 
-- **Web Interface**: http://172.17.0.1:3006
+- **Web Interface**: http://172.17.0.1:64198
+
+The first visit prompts you to create an account. The headless Chrome and
+Meilisearch services are internal-only and never published to the host.
 
 ## 📂 Volumes
 
-- `./volumes/config/hoarder` - Data storage
-- `./volumes/data/hoarder` - Data storage
+- `./volumes/data/hoarder` - Bookmarks, notes, and archived content
+- `./volumes/data/meilisearch/hoarder` - Search index
+
+## 🔐 Security
+
+- Change all default passwords before deploying to production
+- The headless Chrome container renders untrusted pages — it is isolated on the
+  project network with no published ports
+- Meilisearch is internal-only and never published to the host
+- Configure HTTPS using a reverse proxy (nginx, traefik, caddy)
+- Regularly update Docker images for security patches
+- Backup your data regularly
 
 ## 🔍 Logging
 
 ```shell
-docker compose logs -f hoarder
+docker compose --env-file .env logs -f app
 ```
 
 ## 🛠️ Management
 
 ```bash
 # Start services
-docker compose up -d
+docker compose --env-file .env up -d
 
 # Stop services
-docker compose down
+docker compose --env-file .env down
 
 # Update to latest images
-docker compose pull && docker compose up -d
+docker compose --env-file .env pull && docker compose --env-file .env up -d
 
 # View logs
-docker compose logs -f
+docker compose --env-file .env logs -f
 
 # Restart services
-docker compose restart
+docker compose --env-file .env restart
 ```
 
 ## 📋 Requirements

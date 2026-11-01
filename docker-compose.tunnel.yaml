@@ -1,0 +1,89 @@
+name: hoarder
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: ghcr.io/karakeep-app/karakeep:latest
+    container_name: hoarder-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: hoarder-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+      NEXTAUTH_URL: https://${BASE_HOST_NAME:-$HOSTNAME}
+      NEXTAUTH_SECRET: ${APP_SECRET_KEY:-replace-with-a-random-32-byte-hex-string}
+      # Meilisearch full-text search
+      MEILI_ADDR: http://hoarder-meilisearch:7700
+      MEILI_MASTER_KEY: ${APP_SECRET_KEY:-replace-with-a-random-32-byte-hex-string}
+      # Headless browser used for bookmark previews and scraping
+      BROWSER_WEB_URL: http://hoarder-chrome:9222
+      DATA_DIR: /data
+    volumes:
+      - './volumes/data/hoarder:/data:z'
+    depends_on:
+      - hoarder-chrome
+      - hoarder-meilisearch
+    labels:
+      - 'cloudflare.enable=true'
+      - 'cloudflare.service=http://hoarder-app:3000'
+      - 'cloudflare.hostname=${BASE_HOST_NAME:-$HOSTNAME}'
+    networks:
+      - hoarder
+      - cloudflare
+
+  hoarder-chrome:
+    image: zenika/alpine-chrome:latest
+    container_name: hoarder-chrome
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: hoarder-chrome
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    init: true
+    command:
+      - '--no-sandbox'
+      - '--remote-debugging-address=0.0.0.0'
+      - '--remote-debugging-port=9222'
+      - '--disable-gpu'
+      - '--disable-dev-shm-usage'
+      - '--hide-scrollbars'
+      - '--disable-blink-features=AutomationControlled'
+      - '--window-size=1440,900'
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: hoarder-chrome
+    networks:
+      - hoarder
+
+  hoarder-meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: hoarder-meilisearch
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: hoarder-meilisearch
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: hoarder-meilisearch
+      MEILI_NO_ANALYTICS: 'true'
+      MEILI_MASTER_KEY: ${APP_SECRET_KEY:-replace-with-a-random-32-byte-hex-string}
+    volumes:
+      - './volumes/data/meilisearch/hoarder:/meili_data:z'
+    networks:
+      - hoarder
+
+networks:
+  hoarder:
+    name: hoarder
+    external: false
+  cloudflare:
+    external: true
