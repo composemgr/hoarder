@@ -26,6 +26,12 @@ services:
       # Headless browser used for bookmark previews and scraping
       BROWSER_WEB_URL: http://hoarder-chrome:9222
       DATA_DIR: /data
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider "http://127.0.0.1:$${PORT:-3000}/api/health" || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - './volumes/data/hoarder:/data:z'
     depends_on:
@@ -68,6 +74,12 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
       CONTAINER_NAME: hoarder-chrome
+    healthcheck:
+      test: ['CMD', 'nc', '-z', '127.0.0.1', '9222']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - hoarder
 
@@ -84,6 +96,12 @@ services:
       CONTAINER_NAME: hoarder-meilisearch
       MEILI_NO_ANALYTICS: 'true'
       MEILI_MASTER_KEY: ${APP_SECRET_KEY:-replace-with-a-random-32-byte-hex-string}
+    healthcheck:
+      test: ['CMD', 'curl', '-s', '-o', '/dev/null', '--max-time', '5', 'http://127.0.0.1:7700/']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - './volumes/data/meilisearch/hoarder:/meili_data:z'
     networks:
